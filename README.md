@@ -48,8 +48,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - **5 screens**: Mission Control, Task Graph, Review Queue, Spec Studio, Agent Registry
 - **Core entities**: Task, Artifact, Evidence, Agent, Event, Change
-- **Adapter interfaces**: TaskGraphAdapter, SpecAdapter, VCSAdapter, AgentRuntimeAdapter
-- **Mock data now, real adapters later** — the store is the adapter boundary
+- **Adapter interfaces**: TaskGraphAdapter, SpecAdapter, VCSAdapter, AgentRuntimeAdapter (defined, not yet wired)
+- **Mock data now, real adapters later** — interfaces defined in `types.ts`, store consumes mocks directly for v0
 
 ### Tech Stack
 
