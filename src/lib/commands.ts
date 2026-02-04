@@ -94,7 +94,7 @@ const COMMAND_DEFS: CommandDef[] = [
 
         return {
           success: true,
-          message: `✅ Created change: **${data.changeId}**\n\n📁 \`openspec/changes/${data.changeId}/proposal.md\`\n\nNext: run \`/plan ${data.changeId}\` to generate tasks.`,
+          message: `✅ Created change: **${data.changeId}**\n\n📁 \`openspec/changes/${data.changeId}/proposal.md\`\n\nNext: run \`/plan ${data.changeId}\` (or \`clawde plan ${data.changeId}\`) to generate tasks.`,
           navigateTo: { screen: 'spec-studio', id: data.changeId },
         };
       } catch (e) {
@@ -104,12 +104,12 @@ const COMMAND_DEFS: CommandDef[] = [
   },
   {
     name: 'plan',
-    usage: '/plan [change-id]',
+    usage: '/plan [change-id] [--dry-run]',
     help: 'Generate tasks from a change proposal',
     minArgs: 0,
     maxArgs: 1,
     execute: async (cmd, ctx) => {
-      const changeId = cmd.args[0];
+      let changeId = cmd.args[0];
       const dryRun = cmd.flags['dry-run'] === 'true';
       
       if (!changeId) {
@@ -118,21 +118,43 @@ const COMMAND_DEFS: CommandDef[] = [
         if (!active) {
           return { success: false, message: '❌ No active change found. Specify a change ID or create one with `/new`.' };
         }
-        return {
-          success: true,
-          message: `🎯 Would plan tasks for: **${active.name}**${dryRun ? ' (dry run)' : ''}\n\n_(Task planning not wired yet — coming in T14)_`,
-        };
+        changeId = active.id;
       }
       
-      const change = ctx.changes.find(c => c.id === changeId || c.name.includes(changeId));
+      // Verify change exists in our state
+      const change = ctx.changes.find(c => c.id === changeId || c.name.includes(changeId!));
       if (!change) {
         return { success: false, message: `❌ Change "${changeId}" not found.` };
       }
-      
-      return {
-        success: true,
-        message: `🎯 Would plan tasks for: **${change.name}**${dryRun ? ' (dry run)' : ''}\n\n_(Task planning not wired yet — coming in T14)_`,
-      };
+
+      try {
+        const response = await fetch(`/api/changes/${encodeURIComponent(change.id)}/plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dryRun }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return { success: false, message: `❌ ${data.error || 'Failed to generate tasks'}` };
+        }
+
+        if (dryRun) {
+          return {
+            success: true,
+            message: `🔍 **Dry run** — tasks for **${change.name}**:\n\n\`\`\`markdown\n${data.preview?.slice(0, 1500)}${data.preview?.length > 1500 ? '\n...(truncated)' : ''}\n\`\`\`\n\n_Run without \`--dry-run\` to save._`,
+          };
+        }
+
+        return {
+          success: true,
+          message: `✅ Generated **${data.taskCount}** tasks for **${change.name}**\n\n📁 \`openspec/changes/${change.id}/tasks.md\`\n\nNext: run \`/seed ${change.id}\` (or \`clawde seed ${change.id}\`) to import into Beads.`,
+          navigateTo: { screen: 'spec-studio', id: change.id },
+        };
+      } catch (e) {
+        return { success: false, message: `❌ Failed to plan: ${e instanceof Error ? e.message : 'Network error'}` };
+      }
     },
   },
   {

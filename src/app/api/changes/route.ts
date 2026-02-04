@@ -129,7 +129,7 @@ _High-level description of what will be built._
 
 ## Tasks
 
-_Run \`/plan ${name}\` to generate tasks, or add them manually below._
+_Run \`/plan ${name}\` (or \`clawde plan ${name}\`) to generate tasks, or add them manually below._
 
 ## Open Questions
 

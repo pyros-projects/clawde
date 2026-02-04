@@ -5,15 +5,17 @@ import { NextRequest } from 'next/server';
 import { getAdapterManager } from '@/lib/adapter-manager';
 
 interface ChatRequest {
-  agentId: string;
-  message: string;
+  agentId?: string;
+  message?: string;
+  messages?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  stream?: boolean;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ChatRequest;
-    const { agentId, message, history = [] } = body;
+    const { agentId, message, messages: rawMessages, history = [], stream = true } = body;
 
     // Get or initialize project state
     const manager = getAdapterManager();
@@ -25,11 +27,12 @@ export async function POST(request: NextRequest) {
       await manager.startWatching();
     }
 
-    // Find agent config
-    const agentConfig = state.project.config.agents.find(a => a.id === agentId);
+    // Find agent config (use first agent if not specified)
+    const targetAgentId = agentId || state.project.config.agents[0]?.id;
+    const agentConfig = state.project.config.agents.find(a => a.id === targetAgentId);
     if (!agentConfig) {
       return Response.json(
-        { error: `Agent "${agentId}" not found in project config` },
+        { error: `Agent "${targetAgentId}" not found in project config` },
         { status: 404 }
       );
     }
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
     // Check connection type
     if (agentConfig.connection.type !== 'openclaw' || !agentConfig.connection.gateway) {
       return Response.json(
-        { error: `Agent "${agentId}" does not have an OpenClaw gateway configured` },
+        { error: `Agent "${targetAgentId}" does not have an OpenClaw gateway configured` },
         { status: 400 }
       );
     }
@@ -45,14 +48,25 @@ export async function POST(request: NextRequest) {
     const gateway = agentConfig.connection.gateway;
 
     // Build messages array
-    const systemPrompt = buildSystemPrompt(state);
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      ...history,
-      { role: 'user' as const, content: message },
-    ];
+    // Support both: raw messages (for internal calls) or agentId+message (for chat UI)
+    let messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+    
+    if (rawMessages) {
+      // Internal call with full messages array (e.g., from /plan)
+      messages = rawMessages;
+    } else if (message) {
+      // Chat UI call with agentId + message
+      const systemPrompt = buildSystemPrompt(state);
+      messages = [
+        { role: 'system' as const, content: systemPrompt },
+        ...history,
+        { role: 'user' as const, content: message },
+      ];
+    } else {
+      return Response.json({ error: 'Missing message or messages' }, { status: 400 });
+    }
 
-    // Forward to agent gateway with streaming
+    // Forward to agent gateway
     const response = await fetch(`${gateway}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -61,7 +75,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: 'openclaw',
-        stream: true,
+        stream,
         messages,
       }),
     });
@@ -86,26 +100,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Stream the response back
-    const readable = response.body;
-    if (!readable) {
-      return Response.json(
-        { error: 'No response body from gateway' },
-        { status: 500 }
-      );
+    // Streaming: proxy the SSE stream directly
+    if (stream) {
+      const readable = response.body;
+      if (!readable) {
+        return Response.json(
+          { error: 'No response body from gateway' },
+          { status: 500 }
+        );
+      }
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
     }
 
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    });
+    // Non-streaming: return JSON response directly
+    const data = await response.json();
+    return Response.json(data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[chat] Error:', message);
-    return Response.json({ error: message }, { status: 500 });
+    const errMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[chat] Error:', errMsg);
+    return Response.json({ error: errMsg }, { status: 500 });
   }
 }
 
