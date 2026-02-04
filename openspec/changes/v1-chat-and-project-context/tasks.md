@@ -153,6 +153,21 @@
 - Environment variables for agent gateway URLs
 - **Deps:** T8
 
+### T23: Conductor / floor control
+- Speaker lock: only one agent produces output at a time
+- Baton pass (`clawde handoff <agent>`), completion markers
+- TTL / force release if agent holds floor too long
+- Queue (`clawde queue`), interrupt (`clawde interrupt`), next (`clawde next`)
+- Consolidated output: one response per turn, summaries + artifact links for large output
+- **Deps:** T12
+
+### T24: HQ demo assets redo
+- Redo GIF at 2x+ DPI, larger viewport (1920x1080), MP4 + GIF fallback
+- Include chat/conductor flow in the demo walkthrough
+- Regenerate all screenshots as high-res PNG
+- Update README with new assets
+- **Deps:** T10, T23
+
 ## Dependency DAG
 
 ```

@@ -32,6 +32,8 @@ It discovers state from well-known paths:
 
 If a source doesn't exist, that section shows an empty/setup state (not an error).
 
+**Config format**: JSON (`.clawde/config.json`), not YAML. Simpler, no extra dependency, already implemented.
+
 ### Data flow
 
 ```
@@ -150,11 +152,39 @@ Natural language gets interpreted by the connected agent and mapped to these act
 
 ### Safety controls
 
-- **Confirmation gates**: destructive actions (delete change, reject task, reassign) require explicit confirmation
+- **Confirmation gates**: destructive actions require explicit confirmation. In the web UI: confirm/cancel buttons. In Discord/CLI: typed `clawde confirm <token>` / `clawde cancel` (no reliance on inline buttons)
 - **Write ownership**: ClawDE enforces which agents can write to which paths (from config)
 - **Rate limiting**: max N actions per minute per agent (configurable)
 - **Audit trail**: every chat command creates an Event in the activity feed
 - **Dry run mode**: `/plan --dry-run` shows what would be created without writing
+
+## Feature 3: Conductor / Floor Control
+
+Solves the "Discord chaos" problem — multiple agents talking over each other, fragmented messages, interleaved responses.
+
+### Design
+
+One agent (the **Conductor**) is the sole "mouth" at any time. Other agents can work behind the scenes, but only the Conductor produces user-visible output.
+
+### Floor control rules
+
+| Rule | Behavior |
+|------|----------|
+| **Speaker lock** | Only one agent produces output at a time. Others buffer. |
+| **Baton pass** | `clawde handoff <agent>` explicitly transfers the floor |
+| **Completion marker** | Agent signals "done" → floor is released |
+| **TTL / force release** | If an agent holds the floor > N minutes with no output, floor auto-releases |
+| **Queue** | `clawde queue "<request>"` adds to backlog without interrupting current work |
+| **Interrupt** | `clawde interrupt` / `clawde cancel` stops current work cleanly |
+| **Next** | `clawde next` pulls next queued item |
+
+### Consolidated output
+
+The Conductor composes **one final response** per turn, even if multiple agents contributed. If output is large: short summary + links to artifacts (specs/tasks/diffs), not walls of text.
+
+### Multi-turn wizard mode
+
+When information is missing, the Conductor asks 1-3 tight questions and maintains state across turns. The user answers naturally, but every answer resolves to a deterministic action.
 
 ## Non-goals (v1)
 
