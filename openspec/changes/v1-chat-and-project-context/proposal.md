@@ -6,6 +6,7 @@ Three foundational features that transform ClawDE from a static dashboard into a
 
 1. **Project Context** — ClawDE reads state from the repo it's launched in (OpenSpec changes, Beads tasks, git history). Single-project v1, designed to extend to multi-project later.
 2. **Chat Interface** — An embedded chat panel that serves as the primary command surface. Natural language in → specs, tasks, and agent assignments out.
+3. **Conductor / Floor Control** — Single-speaker protocol that prevents agent chaos. One mouth talks at a time, with explicit baton pass, queueing, and interrupts.
 
 ## Motivation
 
@@ -90,7 +91,6 @@ Agents are defined in `.clawde/config.json`:
     }
   ]
 }
-      gateway: http://localhost:19789
 ```
 
 ### File watching
