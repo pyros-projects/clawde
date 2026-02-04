@@ -24,9 +24,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build static site (v0 demo)
+        run: |
+          # Remove API routes for static export (they need SSR)
+          rm -rf src/app/api
+          npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: /clawde
+          STATIC_EXPORT: 'true'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
