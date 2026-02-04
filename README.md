@@ -8,6 +8,7 @@
   Task graphs · Spec-driven workflow · Review gates · Multi-agent orchestration
 </p>
 <p align="center">
+  <a href="https://pyros-projects.github.io/clawde/"><strong>🔴 Live Demo</strong></a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-screens">Screens</a> •
   <a href="#-architecture">Architecture</a> •
