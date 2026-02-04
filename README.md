@@ -8,7 +8,7 @@
   Task graphs · Spec-driven workflow · Review gates · Multi-agent orchestration
 </p>
 <p align="center">
-  <a href="https://clawde-three.vercel.app/"><strong>🔴 Live Demo (Vercel)</strong></a> •
+  <a href="https://clawde-three.vercel.app/"><strong>🔴 Live Demo</strong></a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-screens">Screens</a> •
   <a href="#-architecture">Architecture</a> •
@@ -46,7 +46,7 @@ Open [http://localhost:3000](http://localhost:3000). That's it.
 
 Your real-time command center. See every agent's status, current task, and capabilities at a glance. The activity feed shows commits, task claims, reviews, and connections as they happen.
 
-![Mission Control](docs/screenshots/mission-control.jpg)
+![Mission Control](docs/screenshots/01-mission-control.png)
 
 **What you see:**
 - **Agent cards** — live status (working/reviewing/idle), current task, model info, capability tags
@@ -59,7 +59,7 @@ Your real-time command center. See every agent's status, current task, and capab
 
 The heart of ClawDE. An interactive dependency DAG that makes task flow *visible*. Color-coded by status, with assignee badges and evidence indicators. Click any node to inspect.
 
-![Task Graph](docs/screenshots/task-graph.jpg)
+![Task Graph](docs/screenshots/02-task-graph.png)
 
 **What you see:**
 - **Interactive DAG** — zoom, pan, drag. Powered by React Flow
@@ -70,26 +70,11 @@ The heart of ClawDE. An interactive dependency DAG that makes task flow *visible
 
 ---
 
-### 3. Review Queue
-
-Code review with context. Every review shows the diff, the evidence (test results, verification), and the agent that submitted it. Approve or request changes — the decision flows back into the task graph.
-
-![Review Queue](docs/screenshots/review-queue.jpg)
-
-**What you see:**
-- **Pending reviews** — tasks awaiting human approval
-- **Unified diff viewer** — syntax-highlighted, with line numbers and +/- counts per file
-- **Evidence section** — test results, verification notes attached to the review
-- **Agent attribution** — who wrote it, which model, which commit
-- **Approve / Request Changes** — one-click review actions
-
----
-
-### 4. Spec Studio
+### 3. Spec Studio
 
 Spec-driven development, visualized. Each "change" flows through an artifact pipeline: proposal → specs → design → tasks. See what's complete, what's stale, and where the gaps are.
 
-![Spec Studio](docs/screenshots/spec-studio.jpg)
+![Spec Studio](docs/screenshots/03-spec-studio.png)
 
 **What you see:**
 - **Artifact pipeline** — four stages per change, with completion and staleness indicators
@@ -100,11 +85,26 @@ Spec-driven development, visualized. Each "change" flows through an artifact pip
 
 ---
 
+### 4. Review Queue
+
+Code review with context. Every review shows the diff, the evidence (test results, verification), and the agent that submitted it. Approve or request changes — the decision flows back into the task graph.
+
+![Review Queue](docs/screenshots/04-review-queue.png)
+
+**What you see:**
+- **Pending reviews** — tasks awaiting human approval
+- **Unified diff viewer** — syntax-highlighted, with line numbers and +/- counts per file
+- **Evidence section** — test results, verification notes attached to the review
+- **Agent attribution** — who wrote it, which model, which commit
+- **Approve / Request Changes** — one-click review actions
+
+---
+
 ### 5. Agent Registry
 
 Know your agents. Provider, model, capabilities, connection status, and per-agent task performance — all in one view. Coming soon: access controls and cost tracking.
 
-![Agent Registry](docs/screenshots/agents.jpg)
+![Agent Registry](docs/screenshots/05-agents.png)
 
 **What you see:**
 - **Agent profiles** — provider (Anthropic/OpenAI/Google), model, connection status
