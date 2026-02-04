@@ -76,7 +76,8 @@ export type EventType =
   | 'spec-updated'
   | 'change-created'
   | 'change-verified'
-  | 'change-archived';
+  | 'change-archived'
+  | 'chat-command'; // T20: audit trail for chat commands
 
 export interface Task {
   id: string;

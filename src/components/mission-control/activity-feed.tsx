@@ -15,6 +15,7 @@ import {
   FolderPlus,
   Archive,
   Shield,
+  Terminal,
 } from 'lucide-react';
 
 const EVENT_CONFIG: Record<EventType, { icon: React.ElementType; color: string; label: string }> = {
@@ -33,6 +34,7 @@ const EVENT_CONFIG: Record<EventType, { icon: React.ElementType; color: string; 
   'change-created': { icon: FolderPlus, color: 'var(--color-accent-cyan)', label: 'Change Created' },
   'change-verified': { icon: CheckCircle2, color: 'var(--color-accent-green)', label: 'Verified' },
   'change-archived': { icon: Archive, color: 'var(--color-text-muted)', label: 'Archived' },
+  'chat-command': { icon: Terminal, color: 'var(--color-accent-cyan)', label: 'Command' },
 };
 
 function formatTime(timestamp: string): string {

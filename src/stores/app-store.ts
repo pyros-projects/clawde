@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { Task, Agent, Event, Change, Screen, TaskStatus, TaskFilters, ChatMessage, ParsedCommand, COMMANDS } from '@/lib/types';
-import { executeCommand, type CommandContext } from '@/lib/commands';
+import { executeCommand, type CommandContext, type AuditEvent } from '@/lib/commands';
 import { mockTasks, mockAgents, mockEvents, mockChanges } from '@/data/mock';
 
 interface AppStore {
@@ -35,6 +35,9 @@ interface AppStore {
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   approveTask: (taskId: string) => void;
   rejectTask: (taskId: string, reason: string) => void;
+
+  // Audit trail (T20)
+  addAuditEvent: (command: string, args: string[], success: boolean, message: string, affectedIds?: string[]) => void;
 
   // Computed
   getReadyTasks: () => Task[];
@@ -196,6 +199,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
             tasks: s.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t),
           }));
         },
+        // Audit callback (T20)
+        onAuditEvent: (event: AuditEvent) => {
+          get().addAuditEvent(
+            event.command,
+            event.args,
+            event.success,
+            event.message,
+            event.affectedIds
+          );
+        },
       };
       
       try {
@@ -326,6 +339,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
         tasks: state.tasks.map((t) =>
           t.id === taskId ? { ...t, status: 'in-progress' as TaskStatus, updatedAt: new Date().toISOString() } : t
         ),
+        events: [newEvent, ...state.events],
+      };
+    });
+  },
+
+  // Audit trail (T20)
+  addAuditEvent: (command, args, success, message, affectedIds) => {
+    set((state) => {
+      const newEvent: Event = {
+        id: `evt-${Date.now()}`,
+        type: 'chat-command',
+        payload: { command, args, success, message },
+        timestamp: new Date().toISOString(),
+        taskId: affectedIds?.[0], // link to first affected task/change
+      };
+      return {
         events: [newEvent, ...state.events],
       };
     });

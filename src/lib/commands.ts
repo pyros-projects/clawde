@@ -15,6 +15,16 @@ export type CommandResult = {
   };
 };
 
+export type AuditEvent = {
+  type: 'chat-command';
+  command: string;
+  args: string[];
+  success: boolean;
+  message: string;
+  affectedIds?: string[]; // task/change IDs affected
+  timestamp: number;
+};
+
 export type CommandContext = {
   tasks: Task[];
   changes: Change[];
@@ -22,6 +32,8 @@ export type CommandContext = {
   onCreateChange?: (name: string, description: string) => Promise<string>;
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onRunBeadsCommand?: (cmd: string, args: string[]) => Promise<string>;
+  // Audit callback (T20)
+  onAuditEvent?: (event: AuditEvent) => void;
 };
 
 // Command definitions with validation and execution
@@ -591,7 +603,30 @@ export async function executeCommand(
     };
   }
   
-  return def.execute(cmd, ctx);
+  // Execute the command
+  const result = await def.execute(cmd, ctx);
+
+  // Emit audit event (T20)
+  if (ctx.onAuditEvent) {
+    const affectedIds: string[] = [];
+    
+    // Extract affected IDs from result navigation hints
+    if (result.navigateTo?.id) {
+      affectedIds.push(result.navigateTo.id);
+    }
+
+    ctx.onAuditEvent({
+      type: 'chat-command',
+      command: cmd.name,
+      args: cmd.args,
+      success: result.success,
+      message: result.message,
+      affectedIds: affectedIds.length > 0 ? affectedIds : undefined,
+      timestamp: Date.now(),
+    });
+  }
+
+  return result;
 }
 
 /**
