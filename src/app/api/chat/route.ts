@@ -15,15 +15,14 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as ChatRequest;
     const { agentId, message, history = [] } = body;
 
-    // Get project state for context
+    // Get or initialize project state
     const manager = getAdapterManager();
-    const state = manager.getState();
+    let state = manager.getState();
     
     if (!state) {
-      return Response.json(
-        { error: 'Project not initialized. Visit /api/project first.' },
-        { status: 503 }
-      );
+      // Auto-initialize on first chat request
+      state = await manager.init();
+      await manager.startWatching();
     }
 
     // Find agent config
@@ -158,10 +157,16 @@ export async function GET(request: NextRequest) {
   }
 
   const manager = getAdapterManager();
-  const state = manager.getState();
+  let state = manager.getState();
   
   if (!state) {
-    return Response.json({ connected: false, reason: 'Project not initialized' });
+    // Auto-initialize
+    try {
+      state = await manager.init();
+      await manager.startWatching();
+    } catch {
+      return Response.json({ connected: false, reason: 'Failed to initialize project' });
+    }
   }
 
   const agentConfig = state.project.config.agents.find(a => a.id === agentId);
