@@ -114,6 +114,21 @@ Know your agents. Provider, model, capabilities, connection status, and per-agen
 
 ---
 
+### 6. Chat Interface *(v1 NEW)*
+
+The command surface for orchestration. Type `/` to see all commands, or chat naturally with your agents. Commands execute locally; natural language routes to your agent gateway.
+
+![Chat Panel](docs/screenshots/06-chat-panel.png)
+
+**What you see:**
+- **Collapsible panel** — toggle with ⌘J or the Chat button
+- **Command autocomplete** — type `/` to see available commands
+- **Slash commands** — `/new`, `/plan`, `/seed`, `/assign`, `/approve`, `/reject`, `/status`, `/help`
+- **Agent integration** — natural language messages proxy to OpenClaw gateway
+- **Activity logging** — commands appear in the Mission Control activity feed
+
+---
+
 ## 🏗️ Architecture
 
 ```
