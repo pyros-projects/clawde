@@ -9,6 +9,9 @@ export const runtime = 'nodejs';
 export async function GET() {
   const encoder = new TextEncoder();
   
+  // Cleanup function - will be set in start(), called in cancel()
+  let cleanup: (() => void) | null = null;
+  
   // Create a ReadableStream for SSE
   const stream = new ReadableStream({
     async start(controller) {
@@ -63,28 +66,22 @@ export async function GET() {
           const heartbeat = formatSSEEvent('heartbeat', { ts: Date.now() });
           controller.enqueue(encoder.encode(heartbeat));
         } catch {
-          // Controller closed
-          clearInterval(heartbeatInterval);
+          // Controller closed - cleanup will handle the interval
+          cleanup?.();
         }
       }, 30000); // Every 30 seconds
 
-      // Cleanup on close
-      const cleanup = () => {
+      // Set cleanup function for cancel() to call
+      cleanup = () => {
         clearInterval(heartbeatInterval);
         unsubscribe();
       };
-
-      // Note: We can't easily detect client disconnect in this model
-      // The stream will be cleaned up when the response is done
-      // In a production system, you'd want to track connections more carefully
-
-      // Store cleanup for potential future use
-      (controller as unknown as { _cleanup?: () => void })._cleanup = cleanup;
     },
 
     cancel() {
       // Called when client disconnects
-      // Cleanup is handled by the interval/unsubscribe pattern
+      cleanup?.();
+      cleanup = null;
     },
   });
 
