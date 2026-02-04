@@ -2,7 +2,7 @@
 
 ## Summary
 
-Two foundational features that transform ClawDE from a static dashboard into a living development environment:
+Three foundational features that transform ClawDE from a static dashboard into a living development environment:
 
 1. **Project Context** — ClawDE reads state from the repo it's launched in (OpenSpec changes, Beads tasks, git history). Single-project v1, designed to extend to multi-project later.
 2. **Chat Interface** — An embedded chat panel that serves as the primary command surface. Natural language in → specs, tasks, and agent assignments out.
@@ -28,7 +28,7 @@ It discovers state from well-known paths:
 | OpenSpec | `openspec/` | Changes, artifacts, pipeline state |
 | Beads | `.beads/` | Task graph, dependencies, status |
 | Git | `.git/` | Commits, diffs, branches, authorship |
-| ClawDE config | `.clawde/config.yaml` | Agent definitions, adapter settings |
+| ClawDE config | `.clawde/config.json` | Agent definitions, adapter settings |
 
 If a source doesn't exist, that section shows an empty/setup state (not an error).
 
@@ -59,34 +59,37 @@ interface ProjectContext {
   hasOpenSpec: boolean;
   hasBeads: boolean;
   hasGit: boolean;
-  config: ClawDEConfig;   // from .clawde/config.yaml
+  config: ClawDEConfig;   // from .clawde/config.json
 }
 ```
 
 ### Agent definitions
 
-Agents are defined in `.clawde/config.yaml`:
+Agents are defined in `.clawde/config.json`:
 
-```yaml
-agents:
-  - id: claude
-    name: Claude
-    provider: Anthropic
-    model: claude-opus-4-5
-    color: "#f97316"
-    capabilities: [coding, architecture, review, documentation, git-write]
-    connection:
-      type: openclaw
-      gateway: http://localhost:18789
-
-  - id: codie
-    name: Codie
-    provider: OpenAI
-    model: gpt-5.2
-    color: "#06b6d4"
-    capabilities: [coding, review, testing, refactoring]
-    connection:
-      type: openclaw
+```json
+{
+  "agents": [
+    {
+      "id": "claude",
+      "name": "Claude",
+      "provider": "Anthropic",
+      "model": "claude-opus-4-5",
+      "color": "#f97316",
+      "capabilities": ["coding", "architecture", "review", "documentation", "git-write"],
+      "connection": { "type": "openclaw", "gateway": "http://localhost:18789" }
+    },
+    {
+      "id": "codie",
+      "name": "Codie",
+      "provider": "OpenAI",
+      "model": "gpt-5.2",
+      "color": "#06b6d4",
+      "capabilities": ["coding", "review", "testing", "refactoring"],
+      "connection": { "type": "openclaw", "gateway": "http://localhost:19789" }
+    }
+  ]
+}
       gateway: http://localhost:19789
 ```
 
@@ -126,18 +129,24 @@ User sees new change in Spec Studio, new tasks in Task Graph
 
 ### Explicit commands
 
-The chat supports both natural language and explicit commands:
+The chat supports both natural language and explicit commands. In Discord/CLI, use the `clawde` prefix to avoid collision with normal chat. In the web UI, `/` prefix also works.
 
 | Command | Action |
 |---------|--------|
-| `/new <description>` | Create a new OpenSpec change |
-| `/plan` | Run OpenSpec planning on current change |
-| `/seed` | Import tasks from OpenSpec into Beads |
-| `/assign <task> <agent>` | Assign a task to an agent |
-| `/status` | Show current project status summary |
-| `/approve <task>` | Approve a task in review |
-| `/reject <task> [reason]` | Reject a task with feedback |
-| `/run <task>` | Tell an assigned agent to start a task |
+| `clawde new <description>` | Create a new OpenSpec change |
+| `clawde plan [change-id]` | Run OpenSpec planning on current change |
+| `clawde seed [change-id]` | Import tasks from OpenSpec into Beads |
+| `clawde assign <task> <agent>` | Assign a task to an agent |
+| `clawde status` | Show current project status summary |
+| `clawde approve <task>` | Approve a task in review |
+| `clawde reject <task> [reason]` | Reject a task with feedback |
+| `clawde run <task>` | Tell an assigned agent to start a task |
+| `clawde help [command]` | Show help and examples |
+| `clawde confirm <token>` | Confirm a destructive action |
+| `clawde cancel [token]` | Cancel a pending action |
+| `clawde handoff <agent>` | Transfer floor to another agent |
+| `clawde queue "<request>"` | Add to backlog without interrupting |
+| `clawde interrupt` | Stop current work cleanly |
 
 Natural language gets interpreted by the connected agent and mapped to these actions.
 

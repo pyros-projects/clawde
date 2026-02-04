@@ -10,7 +10,7 @@
 - **Deps:** none
 
 ### T2: ClawDE config file
-- Define `.clawde/config.yaml` schema (agents, settings, adapters)
+- Define `.clawde/config.json` schema (agents, settings, adapters)
 - Parser with validation and defaults
 - Create example config for ClawDE's own repo
 - **Deps:** T1
@@ -130,8 +130,8 @@
 
 ### T19: Confirmation gates
 - Destructive commands require explicit confirmation in chat
-- "Are you sure?" prompt with yes/no buttons
-- Configurable: which actions need confirmation (in `.clawde/config.yaml`)
+- "Are you sure?" prompt with typed confirm tokens (clawde confirm/cancel) for Discord/CLI; buttons optional in web UI
+- Configurable: which actions need confirmation (in `.clawde/config.json`)
 - **Deps:** T12
 
 ### T20: Audit trail
@@ -142,7 +142,7 @@
 
 ### T21: Empty states and onboarding
 - When ClawDE opens in a repo with no config: guided setup flow
-- "Create .clawde/config.yaml" wizard
+- "Create .clawde/config.json" wizard
 - "Initialize OpenSpec" / "Initialize Beads" quick actions
 - Each screen shows helpful empty states (not just blank)
 - **Deps:** T7, T10
