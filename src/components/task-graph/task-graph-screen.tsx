@@ -17,6 +17,8 @@ import { useAppStore } from '@/stores/app-store';
 import { Task, STATUS_COLORS } from '@/lib/types';
 import { TaskNode } from './task-node';
 import { TaskDetailPanel } from './task-detail-panel';
+import { EmptyState } from '../ui/empty-state';
+import { Network } from 'lucide-react';
 
 const nodeTypes: NodeTypes = {
   taskNode: TaskNode as unknown as NodeTypes['taskNode'],
@@ -123,6 +125,35 @@ export function TaskGraphScreen() {
     });
     return counts;
   }, [tasks]);
+
+  // Empty state
+  if (tasks.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Task Graph</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            Dependency visualization
+          </p>
+        </div>
+        <div
+          className="rounded-xl border"
+          style={{
+            height: 'calc(100vh - 12rem)',
+            background: 'var(--color-bg-card)',
+            borderColor: 'var(--color-border-subtle)',
+          }}
+        >
+          <EmptyState
+            icon={Network}
+            title="No tasks yet"
+            description="Create a change and generate tasks to see your dependency graph here."
+            hint="Try: /new my-feature → /plan → /seed"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

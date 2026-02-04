@@ -1,7 +1,8 @@
 'use client';
 
 import { useAppStore } from '@/stores/app-store';
-import { FileText, ChevronRight, AlertTriangle } from 'lucide-react';
+import { FileText, ChevronRight, AlertTriangle, FolderOpen } from 'lucide-react';
+import { EmptyState } from '../ui/empty-state';
 
 const ARTIFACT_TYPES = ['proposal', 'specs', 'design', 'tasks'] as const;
 const STATE_FLOW = ['implementing', 'in-review', 'verified', 'archived'] as const;
@@ -70,6 +71,19 @@ export function SpecStudioScreen() {
       </div>
 
       {/* Changes List */}
+      {changes.length === 0 ? (
+        <div
+          className="rounded-xl border"
+          style={{ background: 'var(--color-bg-card)', borderColor: 'var(--color-border-subtle)' }}
+        >
+          <EmptyState
+            icon={FolderOpen}
+            title="No changes yet"
+            description="Create your first feature change to start spec-driven development."
+            hint="Try: /new add-user-authentication"
+          />
+        </div>
+      ) : (
       <div className="space-y-4">
         {changes.map((change) => (
           <div
@@ -142,6 +156,7 @@ export function SpecStudioScreen() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Coming soon */}
       <div
