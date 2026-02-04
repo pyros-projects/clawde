@@ -160,36 +160,66 @@ const COMMAND_DEFS: CommandDef[] = [
   },
   {
     name: 'seed',
-    usage: '/seed [change-id]',
+    usage: '/seed [change-id] [--dry-run]',
     help: 'Import tasks from change into Beads graph',
     minArgs: 0,
     maxArgs: 1,
     execute: async (cmd, ctx) => {
-      const changeId = cmd.args[0];
+      let changeId = cmd.args[0];
+      const dryRun = cmd.flags['dry-run'] === 'true';
       
-      const change = changeId 
-        ? ctx.changes.find(c => c.id === changeId || c.name.includes(changeId))
-        : ctx.changes.find(c => c.status === 'active');
-      
-      if (!change) {
-        return { success: false, message: changeId 
-          ? `❌ Change "${changeId}" not found.`
-          : '❌ No active change found. Specify a change ID.'
-        };
+      if (!changeId) {
+        // Find most recent active change from local state
+        const active = ctx.changes.find(c => c.status === 'active');
+        if (!active) {
+          return { success: false, message: '❌ No active change found. Specify a change ID.' };
+        }
+        changeId = active.id;
       }
       
-      if (ctx.onRunBeadsCommand) {
-        // T15 will implement actual seeding
+      // Try to find change in local state (for display name)
+      const change = ctx.changes.find(c => c.id === changeId || c.name.includes(changeId!));
+      const targetId = change?.id || changeId;
+      const displayName = change?.name || targetId;
+
+      try {
+        const response = await fetch(`/api/changes/${encodeURIComponent(targetId)}/seed`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dryRun }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return { success: false, message: `❌ ${data.error || 'Failed to seed tasks'}` };
+        }
+
+        if (dryRun) {
+          const taskList = data.tasks
+            ?.slice(0, 10)
+            .map((t: { id: string; title: string; deps: string[] }) => 
+              `• ${t.id}: ${t.title}${t.deps.length ? ` (deps: ${t.deps.join(', ')})` : ''}`)
+            .join('\n') || '';
+          
+          return {
+            success: true,
+            message: `🔍 **Dry run** — would seed **${data.tasks?.length || 0}** tasks from **${displayName}**:\n\n${taskList}${data.tasks?.length > 10 ? '\n...(truncated)' : ''}\n\n_Run without \`--dry-run\` to import._`,
+          };
+        }
+
+        const errSummary = data.errors?.length 
+          ? `\n\n⚠️ ${data.errors.length} errors:\n${data.errors.slice(0, 3).join('\n')}` 
+          : '';
+
         return {
           success: true,
-          message: `🌱 Would seed Beads from: **${change.name}**\n\n_(Beads seeding not wired yet — coming in T15)_`,
+          message: `🌱 Seeded **${data.created}** tasks with **${data.dependencies}** dependencies from **${displayName}**${errSummary}\n\nTask Graph should update automatically.`,
+          navigateTo: { screen: 'task-graph' },
         };
+      } catch (e) {
+        return { success: false, message: `❌ Failed to seed: ${e instanceof Error ? e.message : 'Network error'}` };
       }
-      
-      return {
-        success: true,
-        message: `🌱 Would seed Beads from: **${change.name}**\n\n_(Beads seeding not wired yet — coming in T15)_`,
-      };
     },
   },
   {
