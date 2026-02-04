@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Command,
+  MessageSquare,
 } from 'lucide-react';
 
 const NAV_ITEMS: { screen: Screen; label: string; icon: React.ElementType; shortcut: string }[] = [
@@ -22,7 +23,7 @@ const NAV_ITEMS: { screen: Screen; label: string; icon: React.ElementType; short
 ];
 
 export function Sidebar() {
-  const { activeScreen, setActiveScreen, sidebarOpen, toggleSidebar, toggleCommandPalette, getReviewTasks } = useAppStore();
+  const { activeScreen, setActiveScreen, sidebarOpen, toggleSidebar, toggleCommandPalette, toggleChat, chatOpen, getReviewTasks } = useAppStore();
   const reviewCount = getReviewTasks().length;
 
   return (
@@ -85,6 +86,24 @@ export function Sidebar() {
 
       {/* Bottom actions */}
       <div className="p-2 space-y-1 border-t" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={toggleChat}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+            chatOpen
+              ? 'bg-cyan-500/10 text-cyan-400'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+          }`}
+        >
+          <MessageSquare size={16} />
+          {sidebarOpen && (
+            <>
+              <span className="flex-1 text-left">Chat</span>
+              <kbd className="text-[10px] font-mono px-1 py-0.5 rounded" style={{ background: 'var(--color-bg-tertiary)' }}>
+                ⌘J
+              </kbd>
+            </>
+          )}
+        </button>
         <button
           onClick={toggleCommandPalette}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"

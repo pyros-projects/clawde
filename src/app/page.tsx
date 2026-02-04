@@ -1,6 +1,7 @@
 'use client';
 
 import { Sidebar } from '@/components/layout/sidebar';
+import { ChatPanel } from '@/components/chat/chat-panel';
 import { MissionControlScreen } from '@/components/mission-control/mission-control-screen';
 import { TaskGraphScreen } from '@/components/task-graph/task-graph-screen';
 import { ReviewQueueScreen } from '@/components/review-queue/review-queue-screen';
@@ -29,7 +30,7 @@ function ScreenContent() {
 }
 
 export default function Home() {
-  const { sidebarOpen, setActiveScreen, toggleCommandPalette } = useAppStore();
+  const { sidebarOpen, chatOpen, setActiveScreen, toggleCommandPalette } = useAppStore();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -56,12 +57,13 @@ export default function Home() {
     <div className="min-h-screen bg-grid">
       <Sidebar />
       <main
-        className={`transition-all duration-300 min-h-screen ${sidebarOpen ? 'ml-56' : 'ml-16'}`}
+        className={`transition-all duration-300 min-h-screen ${sidebarOpen ? 'ml-56' : 'ml-16'} ${chatOpen ? 'mr-[380px]' : ''}`}
       >
         <div className="p-6 max-w-7xl mx-auto">
           <ScreenContent />
         </div>
       </main>
+      <ChatPanel />
     </div>
   );
 }
