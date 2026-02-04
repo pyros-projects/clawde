@@ -133,11 +133,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     for (const task of tasks) {
       try {
-        // bd add --title "..." returns the created issue ID
+        // bd create --title "..." returns the created issue ID
         // Use execFile with args array (no shell parsing) + timeout
         const { stdout } = await execFileAsync(
           'bd',
-          ['add', '--title', task.title, '--json'],
+          ['create', task.title, '-d', task.description || task.title, '--json'],
           { cwd: projectRoot, timeout: 15000 }
         );
         
