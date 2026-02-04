@@ -2,6 +2,8 @@
 
 import { Sidebar } from '@/components/layout/sidebar';
 import { MissionControlScreen } from '@/components/mission-control/mission-control-screen';
+import { TaskGraphScreen } from '@/components/task-graph/task-graph-screen';
+import { ReviewQueueScreen } from '@/components/review-queue/review-queue-screen';
 import { useAppStore } from '@/stores/app-store';
 import { useEffect } from 'react';
 
@@ -12,9 +14,9 @@ function ScreenContent() {
     case 'mission-control':
       return <MissionControlScreen />;
     case 'task-graph':
-      return <ComingSoon title="Task Graph" description="Interactive dependency DAG visualization" />;
+      return <TaskGraphScreen />;
     case 'review-queue':
-      return <ComingSoon title="Review Queue" description="Review and approve agent work" />;
+      return <ReviewQueueScreen />;
     case 'spec-studio':
       return <ComingSoon title="Spec Studio" description="Spec-driven planning artifacts" />;
     case 'agent-registry':
