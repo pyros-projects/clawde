@@ -32,94 +32,124 @@ export function useSSE(options: UseSSEOptions) {
 
   const [status, setStatus] = useState<SSEStatus>('disconnected');
   const [lastEvent, setLastEvent] = useState<SSEEvent | null>(null);
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
+  
+  // Store callbacks in refs, updated via effect
+  const callbacksRef = useRef({ onEvent, onStatusChange });
+  useEffect(() => {
+    callbacksRef.current = { onEvent, onStatusChange };
+  }, [onEvent, onStatusChange]);
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const retriesRef = useRef(0);
-  const mountedRef = useRef(true);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const updateStatus = useCallback((newStatus: SSEStatus) => {
-    setStatus(newStatus);
-    onStatusChange?.(newStatus);
-  }, [onStatusChange]);
-
-  const connect = useCallback(() => {
-    if (!mountedRef.current) return;
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    updateStatus('connecting');
-
-    try {
-      const eventSource = new EventSource(url);
-      eventSourceRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        if (!mountedRef.current) return;
-        retriesRef.current = 0;
-        updateStatus('connected');
-      };
-
-      eventSource.onerror = () => {
-        if (!mountedRef.current) return;
-        eventSource.close();
-        eventSourceRef.current = null;
-        updateStatus('disconnected');
-
-        // Attempt reconnect
-        if (retriesRef.current < maxRetries) {
-          retriesRef.current++;
-          setTimeout(connect, reconnectMs * retriesRef.current);
-        } else {
-          updateStatus('error');
-        }
-      };
-
-      // Listen for all event types
-      const eventTypes = ['init', 'update', 'heartbeat', 'error'];
-      for (const type of eventTypes) {
-        eventSource.addEventListener(type, (e: MessageEvent) => {
-          if (!mountedRef.current) return;
-          try {
-            const data = JSON.parse(e.data);
-            const event: SSEEvent = {
-              type,
-              data,
-              timestamp: Date.now(),
-            };
-            setLastEvent(event);
-            onEvent?.(event);
-          } catch {
-            // Invalid JSON
-          }
-        });
-      }
-    } catch {
-      updateStatus('error');
-    }
-  }, [url, onEvent, updateStatus, reconnectMs, maxRetries]);
+  // Manual reconnect
+  const reconnect = useCallback(() => {
+    retriesRef.current = 0;
+    setReconnectTrigger(n => n + 1);
+  }, []);
 
   const disconnect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-    updateStatus('disconnected');
-  }, [updateStatus]);
+    setStatus('disconnected');
+  }, []);
 
   useEffect(() => {
-    mountedRef.current = true;
+    let mounted = true;
+
+    const updateStatus = (newStatus: SSEStatus) => {
+      if (!mounted) return;
+      setStatus(newStatus);
+      callbacksRef.current.onStatusChange?.(newStatus);
+    };
+
+    const connect = () => {
+      if (!mounted) return;
+      
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      updateStatus('connecting');
+
+      try {
+        const eventSource = new EventSource(url);
+        eventSourceRef.current = eventSource;
+
+        eventSource.onopen = () => {
+          if (!mounted) return;
+          retriesRef.current = 0;
+          updateStatus('connected');
+        };
+
+        eventSource.onerror = () => {
+          if (!mounted) return;
+          eventSource.close();
+          eventSourceRef.current = null;
+          updateStatus('disconnected');
+
+          // Attempt reconnect
+          if (retriesRef.current < maxRetries) {
+            retriesRef.current++;
+            const delay = reconnectMs * retriesRef.current;
+            reconnectTimerRef.current = setTimeout(() => {
+              if (mounted) connect();
+            }, delay);
+          } else {
+            updateStatus('error');
+          }
+        };
+
+        // Listen for all event types
+        const eventTypes = ['init', 'update', 'heartbeat', 'error'];
+        for (const type of eventTypes) {
+          eventSource.addEventListener(type, (e: MessageEvent) => {
+            if (!mounted) return;
+            try {
+              const data = JSON.parse(e.data);
+              const event: SSEEvent = {
+                type,
+                data,
+                timestamp: Date.now(),
+              };
+              setLastEvent(event);
+              callbacksRef.current.onEvent?.(event);
+            } catch {
+              // Invalid JSON
+            }
+          });
+        }
+      } catch {
+        updateStatus('error');
+      }
+    };
+
     connect();
 
     return () => {
-      mountedRef.current = false;
-      disconnect();
+      mounted = false;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     };
-  }, [connect, disconnect]);
+  }, [url, reconnectMs, maxRetries, reconnectTrigger]);
 
   return {
     status,
     lastEvent,
-    reconnect: connect,
+    reconnect,
     disconnect,
   };
 }
@@ -131,35 +161,45 @@ export function useRealtimeUpdates(
   onRefresh: () => Promise<void>,
   enabled = true
 ) {
-  const [status, setStatus] = useState<SSEStatus>('disconnected');
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
+  
+  // Store onRefresh in ref, updated via effect
+  const onRefreshRef = useRef(onRefresh);
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
 
-  const handleEvent = useCallback(async (event: SSEEvent) => {
+  const handleEvent = useCallback((event: SSEEvent) => {
     if (event.type === 'update' || event.type === 'init') {
       setLastUpdate(Date.now());
-      await onRefresh();
+      onRefreshRef.current();
     }
-  }, [onRefresh]);
+  }, []);
+
+  const handleStatusChange = useCallback((newStatus: SSEStatus) => {
+    // Could track status here if needed
+    void newStatus;
+  }, []);
 
   const sse = useSSE({
     url: '/api/events/stream',
     onEvent: enabled ? handleEvent : undefined,
-    onStatusChange: setStatus,
+    onStatusChange: handleStatusChange,
   });
 
   // Fallback polling when SSE fails
   useEffect(() => {
     if (!enabled) return;
-    if (status === 'error' || status === 'disconnected') {
+    if (sse.status === 'error') {
       // Poll every 5s as fallback
-      const interval = setInterval(async () => {
-        await onRefresh();
+      const interval = setInterval(() => {
+        onRefreshRef.current();
         setLastUpdate(Date.now());
       }, 5000);
 
       return () => clearInterval(interval);
     }
-  }, [status, enabled, onRefresh]);
+  }, [sse.status, enabled]);
 
   return {
     status: sse.status,
