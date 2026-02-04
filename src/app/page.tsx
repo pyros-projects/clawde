@@ -4,6 +4,8 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { MissionControlScreen } from '@/components/mission-control/mission-control-screen';
 import { TaskGraphScreen } from '@/components/task-graph/task-graph-screen';
 import { ReviewQueueScreen } from '@/components/review-queue/review-queue-screen';
+import { SpecStudioScreen } from '@/components/spec-studio/spec-studio-screen';
+import { AgentRegistryScreen } from '@/components/agent-registry/agent-registry-screen';
 import { useAppStore } from '@/stores/app-store';
 import { useEffect } from 'react';
 
@@ -18,29 +20,12 @@ function ScreenContent() {
     case 'review-queue':
       return <ReviewQueueScreen />;
     case 'spec-studio':
-      return <ComingSoon title="Spec Studio" description="Spec-driven planning artifacts" />;
+      return <SpecStudioScreen />;
     case 'agent-registry':
-      return <ComingSoon title="Agent Registry" description="Configure and monitor agents" />;
+      return <AgentRegistryScreen />;
     default:
       return <MissionControlScreen />;
   }
-}
-
-function ComingSoon({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">{title}</h1>
-        <p style={{ color: 'var(--color-text-muted)' }}>{description}</p>
-        <div
-          className="mt-6 inline-block px-4 py-2 rounded-lg text-sm"
-          style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}
-        >
-          🚧 Building...
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function Home() {
