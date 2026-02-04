@@ -15,6 +15,21 @@ interface UpdateTaskRequest {
   title?: string;
 }
 
+// Map ClawDE status → Beads status
+// ClawDE: open, ready, in-progress, in-review, blocked, done
+// Beads:  open, in_progress, blocked, closed
+function mapToBeadsStatus(clawdeStatus: string): string {
+  const mapping: Record<string, string> = {
+    'open': 'open',
+    'ready': 'open',           // ready = open (no blockers)
+    'in-progress': 'in_progress',
+    'in-review': 'in_progress', // in-review still active work
+    'blocked': 'blocked',
+    'done': 'closed',
+  };
+  return mapping[clawdeStatus] || clawdeStatus;
+}
+
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
@@ -59,7 +74,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       args.push('--assignee', body.assignee);
     }
     if (body.status !== undefined) {
-      args.push('--status', body.status);
+      // Map ClawDE status to Beads status
+      const beadsStatus = mapToBeadsStatus(body.status);
+      args.push('--status', beadsStatus);
     }
     if (body.priority !== undefined) {
       args.push('--priority', body.priority);
