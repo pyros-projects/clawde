@@ -1,0 +1,16 @@
+# Ignore Beads socket and local state
+.beads/bd.sock
+.beads/*.db
+
+# Ignore local config
+.clawde/
+
+# Git
+.git/
+
+# Node modules
+node_modules/
+
+# Build output
+.next/
+out/
