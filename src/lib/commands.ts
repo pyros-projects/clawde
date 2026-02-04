@@ -231,33 +231,38 @@ const COMMAND_DEFS: CommandDef[] = [
     execute: async (cmd, ctx) => {
       const [taskRef, agentId] = cmd.args;
       
+      // Try to find task in local state (for display info)
       const task = ctx.tasks.find(t => 
         t.id === taskRef || 
         t.id.includes(taskRef) || 
         t.title.toLowerCase().includes(taskRef.toLowerCase())
       );
       
-      if (!task) {
-        return { success: false, message: `❌ Task "${taskRef}" not found.` };
-      }
-      
-      if (ctx.onUpdateTask) {
-        try {
-          await ctx.onUpdateTask(task.id, { assignee: agentId });
-          return {
-            success: true,
-            message: `✅ Assigned **${task.title}** to **${agentId}**`,
-            navigateTo: { screen: 'task-graph', id: task.id },
-          };
-        } catch (e) {
-          return { success: false, message: `❌ Failed to assign: ${e}` };
+      // Use found task ID or raw ref (API is source of truth)
+      const taskId = task?.id || taskRef;
+      const displayName = task?.title || taskId;
+
+      try {
+        const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assignee: agentId }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return { success: false, message: `❌ ${data.error || 'Failed to assign task'}` };
         }
+
+        return {
+          success: true,
+          message: `✅ Assigned **${displayName}** to **${agentId}**`,
+          navigateTo: { screen: 'task-graph', id: taskId },
+        };
+      } catch (e) {
+        return { success: false, message: `❌ Failed to assign: ${e instanceof Error ? e.message : 'Network error'}` };
       }
-      
-      return {
-        success: true,
-        message: `📋 Would assign **${task.title}** to **${agentId}**\n\n_(Assignment not wired yet — coming in T16)_`,
-      };
     },
   },
   {
