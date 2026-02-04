@@ -113,7 +113,7 @@ const COMMAND_DEFS: CommandDef[] = [
       const dryRun = cmd.flags['dry-run'] === 'true';
       
       if (!changeId) {
-        // Find most recent active change
+        // Find most recent active change from local state
         const active = ctx.changes.find(c => c.status === 'active');
         if (!active) {
           return { success: false, message: '❌ No active change found. Specify a change ID or create one with `/new`.' };
@@ -121,14 +121,13 @@ const COMMAND_DEFS: CommandDef[] = [
         changeId = active.id;
       }
       
-      // Verify change exists in our state
+      // Try to find change in local state (for display name), but don't block if not found
+      // API is source of truth - it will 404 if change doesn't exist on disk
       const change = ctx.changes.find(c => c.id === changeId || c.name.includes(changeId!));
-      if (!change) {
-        return { success: false, message: `❌ Change "${changeId}" not found.` };
-      }
+      const targetId = change?.id || changeId;
 
       try {
-        const response = await fetch(`/api/changes/${encodeURIComponent(change.id)}/plan`, {
+        const response = await fetch(`/api/changes/${encodeURIComponent(targetId)}/plan`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ dryRun }),
@@ -140,17 +139,19 @@ const COMMAND_DEFS: CommandDef[] = [
           return { success: false, message: `❌ ${data.error || 'Failed to generate tasks'}` };
         }
 
+        const displayName = change?.name || targetId;
+
         if (dryRun) {
           return {
             success: true,
-            message: `🔍 **Dry run** — tasks for **${change.name}**:\n\n\`\`\`markdown\n${data.preview?.slice(0, 1500)}${data.preview?.length > 1500 ? '\n...(truncated)' : ''}\n\`\`\`\n\n_Run without \`--dry-run\` to save._`,
+            message: `🔍 **Dry run** — tasks for **${displayName}**:\n\n\`\`\`markdown\n${data.preview?.slice(0, 1500)}${data.preview?.length > 1500 ? '\n...(truncated)' : ''}\n\`\`\`\n\n_Run without \`--dry-run\` to save._`,
           };
         }
 
         return {
           success: true,
-          message: `✅ Generated **${data.taskCount}** tasks for **${change.name}**\n\n📁 \`openspec/changes/${change.id}/tasks.md\`\n\nNext: run \`/seed ${change.id}\` (or \`clawde seed ${change.id}\`) to import into Beads.`,
-          navigateTo: { screen: 'spec-studio', id: change.id },
+          message: `✅ Generated **${data.taskCount}** tasks for **${displayName}**\n\n📁 \`openspec/changes/${targetId}/tasks.md\`\n\nNext: run \`/seed ${targetId}\` (or \`clawde seed ${targetId}\`) to import into Beads.`,
+          navigateTo: { screen: 'spec-studio', id: targetId },
         };
       } catch (e) {
         return { success: false, message: `❌ Failed to plan: ${e instanceof Error ? e.message : 'Network error'}` };
