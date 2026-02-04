@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { Task, Agent, Event, Change, Screen, TaskStatus, TaskFilters, ChatMessage, ParsedCommand, COMMANDS } from '@/lib/types';
+import { executeCommand, type CommandContext } from '@/lib/commands';
 import { mockTasks, mockAgents, mockEvents, mockChanges } from '@/data/mock';
 
 interface AppStore {
@@ -158,7 +159,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
   toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
 
-  sendChatMessage: (content) => {
+  sendChatMessage: async (content) => {
     const command = tryParseCommand(content);
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}-user`,
@@ -184,7 +185,42 @@ export const useAppStore = create<AppStore>((set, get) => ({
     };
     set((s) => ({ chatMessages: [...s.chatMessages, pendingMsg] }));
 
-    // Build history from last 10 messages (excluding the pending one)
+    // If it's a command, execute it locally
+    if (command) {
+      const ctx: CommandContext = {
+        tasks: get().tasks,
+        changes: get().changes,
+        // Adapter callbacks for commands that modify state
+        onUpdateTask: async (taskId, updates) => {
+          set((s) => ({
+            tasks: s.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t),
+          }));
+        },
+      };
+      
+      try {
+        const result = await executeCommand(command, ctx);
+        set((s) => ({
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === agentMsgId ? { ...m, content: result.message, pending: false } : m
+          ),
+        }));
+        return;
+      } catch (e) {
+        set((s) => ({
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === agentMsgId ? { 
+              ...m, 
+              content: `❌ Command failed: ${e instanceof Error ? e.message : 'Unknown error'}`, 
+              pending: false 
+            } : m
+          ),
+        }));
+        return;
+      }
+    }
+
+    // Natural language — send to agent API
     const existingMessages = get().chatMessages.filter(m => !m.pending);
     const history = existingMessages
       .slice(-10)
@@ -193,7 +229,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
         content: m.content,
       }));
 
-    // Try streaming from agent API
     streamAgentResponse(
       content,
       'claude',
@@ -214,23 +249,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
           ),
         }));
       },
-      // onError: fall back to mock response
+      // onError: fall back to helpful message
       (error) => {
-        console.warn('[chat] Agent API error, using mock:', error);
-        
-        // Generate mock response
-        let mockContent: string;
-        if (command) {
-          mockContent = command.name === 'status'
-            ? `📊 ${get().tasks.length} tasks total, ${get().tasks.filter(t => t.status === 'done').length} done, ${get().tasks.filter(t => t.status === 'in-review').length} in review.`
-            : `Command \`/${command.name}\` received. Args: ${command.args.join(', ') || '(none)'}.\n\n_(Agent gateway not available — using mock response)_`;
-        } else {
-          mockContent = `I heard: "${content}"\n\n_(Agent gateway not available. Enable \`gateway.http.endpoints.chatCompletions\` in your OpenClaw config to connect.)_`;
-        }
-
+        console.warn('[chat] Agent API error:', error);
         set((s) => ({
           chatMessages: s.chatMessages.map((m) =>
-            m.id === agentMsgId ? { ...m, content: mockContent, pending: false } : m
+            m.id === agentMsgId ? { 
+              ...m, 
+              content: `I heard: "${content}"\n\n_(Agent gateway not available. Enable \`gateway.http.endpoints.chatCompletions\` in your OpenClaw config to connect.)_`, 
+              pending: false 
+            } : m
           ),
         }));
       }

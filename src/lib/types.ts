@@ -218,6 +218,7 @@ export const COMMANDS = [
   { name: 'approve', usage: '/approve <task>', help: 'Approve a task in review' },
   { name: 'reject', usage: '/reject <task> [reason]', help: 'Reject a task with feedback' },
   { name: 'run', usage: '/run <task>', help: 'Tell an agent to start a task' },
+  { name: 'help', usage: '/help [command]', help: 'Show available commands' },
 ] as const;
 
 // ============================================================
