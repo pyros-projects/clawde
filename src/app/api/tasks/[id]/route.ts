@@ -94,15 +94,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     try {
-      const { stdout, stderr } = await execFileAsync('bd', args, {
+      const { stdout } = await execFileAsync('bd', args, {
         cwd: projectRoot,
         timeout: 15000,
       });
 
-      // Parse result
+      // Parse result (bd update returns object or array)
       let result;
       try {
-        result = JSON.parse(stdout.trim());
+        const parsed = JSON.parse(stdout.trim());
+        result = Array.isArray(parsed) ? parsed[0] : parsed;
       } catch {
         // bd might not return JSON on success, that's ok
         result = { success: true, output: stdout.trim() };
@@ -177,7 +178,17 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         timeout: 10000,
       });
 
-      const task = JSON.parse(stdout.trim());
+      // bd show --json returns array, extract first element
+      const parsed = JSON.parse(stdout.trim());
+      const task = Array.isArray(parsed) ? parsed[0] : parsed;
+      
+      if (!task) {
+        return NextResponse.json(
+          { error: `Task "${taskId}" not found` },
+          { status: 404 }
+        );
+      }
+      
       return NextResponse.json({ task });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
