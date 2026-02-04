@@ -3,12 +3,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdapterManager } from '@/lib/adapter-manager';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 interface SeedRequest {
   dryRun?: boolean;
@@ -134,9 +134,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     for (const task of tasks) {
       try {
         // bd add --title "..." returns the created issue ID
-        const { stdout } = await execAsync(
-          `bd add --title "${escapeShell(task.title)}" --json`,
-          { cwd: projectRoot }
+        // Use execFile with args array (no shell parsing) + timeout
+        const { stdout } = await execFileAsync(
+          'bd',
+          ['add', '--title', task.title, '--json'],
+          { cwd: projectRoot, timeout: 15000 }
         );
         
         const result = JSON.parse(stdout.trim());
@@ -168,9 +170,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         try {
-          await execAsync(
-            `bd dep ${beadsId} ${depBeadsId}`,
-            { cwd: projectRoot }
+          // Use execFile with args array (no shell parsing) + timeout
+          await execFileAsync(
+            'bd',
+            ['dep', beadsId, depBeadsId],
+            { cwd: projectRoot, timeout: 10000 }
           );
           depsCreated.push(`${beadsId} -> ${depBeadsId}`);
         } catch (e) {
@@ -204,12 +208,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 function parseTasksMd(content: string): ParsedTask[] {
   const tasks: ParsedTask[] = [];
   let currentPhase = 'Phase 1';
-
-  // Match phase headers: ## Phase N: Name
-  const phaseRegex = /^##\s+Phase\s+\d+[:\s]+(.+)$/gm;
-  
-  // Match task headers: ### T<n>: Title
-  const taskRegex = /^###\s+(T\d+)[:\s]+(.+)$/gm;
   
   // Split into lines for processing
   const lines = content.split('\n');
@@ -281,11 +279,4 @@ function parseTasksMd(content: string): ParsedTask[] {
   }
 
   return tasks;
-}
-
-/**
- * Escape string for shell command
- */
-function escapeShell(str: string): string {
-  return str.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
 }
