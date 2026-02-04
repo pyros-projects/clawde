@@ -17,9 +17,23 @@ interface RouteContext {
 // POST /api/changes/[id]/plan — generate tasks from proposal
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { id: changeId } = await context.params;
+    const { id: rawChangeId } = await context.params;
     const body = (await request.json()) as PlanRequest;
     const dryRun = body.dryRun ?? false;
+
+    // Sanitize changeId to prevent path traversal
+    const changeId = rawChangeId
+      .replace(/[^a-z0-9-]/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50);
+
+    if (!changeId) {
+      return NextResponse.json(
+        { error: 'Invalid change ID' },
+        { status: 400 }
+      );
+    }
 
     // Get project state
     const manager = getAdapterManager();
@@ -31,7 +45,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const projectRoot = state.project.root;
-    const changeDir = path.join(projectRoot, 'openspec', 'changes', changeId);
+    const changesRoot = path.resolve(projectRoot, 'openspec', 'changes');
+    const changeDir = path.resolve(changesRoot, changeId);
+
+    // Double-check: resolved path must be within changesRoot (defense in depth)
+    if (!changeDir.startsWith(changesRoot + path.sep)) {
+      return NextResponse.json(
+        { error: 'Invalid change ID' },
+        { status: 400 }
+      );
+    }
 
     // Check if change exists
     try {
