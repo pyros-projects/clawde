@@ -136,7 +136,7 @@ Current status:
 - ${taskStats.blocked} blocked, ${taskStats.ready} ready
 - ${changes.length} changes tracked
 
-Available commands:
+Available commands (also accepts \`clawde <command>\` format):
 - /new <desc> — Create a new change
 - /plan [change] — Generate tasks from a change
 - /seed [change] — Import tasks to Beads
@@ -144,6 +144,7 @@ Available commands:
 - /status — Show project status
 - /approve <task> — Approve a task
 - /reject <task> [reason] — Reject a task
+- /help — Show all commands
 
 Be concise and helpful. When the user uses a slash command, acknowledge it and explain what would happen (actual execution comes later).`;
 }

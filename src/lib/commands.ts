@@ -317,7 +317,7 @@ const COMMAND_DEFS: CommandDef[] = [
     minArgs: 0,
     maxArgs: 1,
     execute: async (cmd) => {
-      const specificCmd = cmd.args[0];
+      const specificCmd = cmd.args[0]?.toLowerCase();
       
       if (specificCmd) {
         const def = COMMAND_DEFS.find(d => d.name === specificCmd);
