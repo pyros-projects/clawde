@@ -22,7 +22,7 @@ const nodeTypes: NodeTypes = {
   taskNode: TaskNode as unknown as NodeTypes['taskNode'],
 };
 
-function layoutNodes(tasks: Task[]): { nodes: Node[]; edges: Edge[] } {
+function layoutNodes(tasks: Task[], agents: { id: string; name: string; color: string }[]): { nodes: Node[]; edges: Edge[] } {
   // Simple layered layout based on dependency depth
   const depthMap = new Map<string, number>();
 
@@ -64,7 +64,6 @@ function layoutNodes(tasks: Task[]): { nodes: Node[]; edges: Edge[] } {
 
     taskIds.forEach((taskId, i) => {
       const task = tasks.find((t) => t.id === taskId)!;
-      const agents = useAppStore.getState().agents;
       const agent = task.assignee ? agents.find((a) => a.id === task.assignee) : undefined;
 
       nodes.push({
@@ -97,10 +96,10 @@ function layoutNodes(tasks: Task[]): { nodes: Node[]; edges: Edge[] } {
 }
 
 export function TaskGraphScreen() {
-  const { tasks, selectTask } = useAppStore();
+  const { tasks, agents, selectTask } = useAppStore();
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
-  const { nodes, edges } = useMemo(() => layoutNodes(tasks), [tasks]);
+  const { nodes, edges } = useMemo(() => layoutNodes(tasks, agents), [tasks, agents]);
 
   const onSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: selectedNodes }) => {

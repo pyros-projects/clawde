@@ -6,6 +6,15 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { DiffViewer } from './diff-viewer';
 import { CheckCircle2, XCircle, Eye, GitCommit, Clock } from 'lucide-react';
 
+function formatTimeAgo(timestamp: string): string {
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 export function ReviewQueueScreen() {
   const { tasks, agents, approveTask, rejectTask } = useAppStore();
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
@@ -83,7 +92,7 @@ export function ReviewQueueScreen() {
                             </span>
                           )}
                           <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-                            <Clock size={9} /> 2h ago
+                            <Clock size={9} /> {formatTimeAgo(task.updatedAt)}
                           </span>
                         </div>
                       </div>
