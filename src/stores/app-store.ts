@@ -61,6 +61,69 @@ function tryParseCommand(input: string): ParsedCommand | undefined {
   return { name, args, flags, raw: input };
 }
 
+// Stream a chat response from the API
+async function streamAgentResponse(
+  message: string,
+  agentId: string,
+  onChunk: (chunk: string) => void,
+  onComplete: (fullResponse: string) => void,
+  onError: (error: string) => void
+): Promise<void> {
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId, message }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') {
+          onComplete(fullResponse);
+          return;
+        }
+
+        try {
+          const chunk = JSON.parse(data);
+          const content = chunk.choices?.[0]?.delta?.content;
+          if (content) {
+            fullResponse += content;
+            onChunk(content);
+          }
+        } catch {
+          // Skip malformed chunks
+        }
+      }
+    }
+
+    onComplete(fullResponse);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    onError(msg);
+  }
+}
+
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial data from mocks
   tasks: mockTasks,
@@ -95,38 +158,63 @@ export const useAppStore = create<AppStore>((set, get) => ({
       command,
     };
 
+    // Add user message
     set((s) => ({ chatMessages: [...s.chatMessages, userMsg] }));
 
-    // Simulate agent response (will be replaced by real agent connection in T11)
-    if (command) {
-      setTimeout(() => {
-        const agentMsg: ChatMessage = {
-          id: `msg-${Date.now()}-agent`,
-          role: 'agent',
-          content: `Command \`/${command.name}\` received. ${
-            command.name === 'status'
-              ? `📊 ${get().tasks.length} tasks total, ${get().tasks.filter(t => t.status === 'done').length} done, ${get().tasks.filter(t => t.status === 'in-review').length} in review.`
-              : `Args: ${command.args.join(', ') || '(none)'}. Agent connection not wired yet — coming in T11.`
-          }`,
-          agentId: 'claude',
-          timestamp: new Date().toISOString(),
-          command,
-        };
-        set((s) => ({ chatMessages: [...s.chatMessages, agentMsg] }));
-      }, 600);
-    } else {
-      // Natural language — echo for now
-      setTimeout(() => {
-        const agentMsg: ChatMessage = {
-          id: `msg-${Date.now()}-agent`,
-          role: 'agent',
-          content: `Heard you. Agent chat connection is coming in T11 — for now, try \`/status\` or \`/help\` commands.`,
-          agentId: 'claude',
-          timestamp: new Date().toISOString(),
-        };
-        set((s) => ({ chatMessages: [...s.chatMessages, agentMsg] }));
-      }, 600);
-    }
+    // Create pending agent message
+    const agentMsgId = `msg-${Date.now()}-agent`;
+    const pendingMsg: ChatMessage = {
+      id: agentMsgId,
+      role: 'agent',
+      content: '',
+      agentId: 'claude',
+      timestamp: new Date().toISOString(),
+      command,
+      pending: true,
+    };
+    set((s) => ({ chatMessages: [...s.chatMessages, pendingMsg] }));
+
+    // Try streaming from agent API
+    streamAgentResponse(
+      content,
+      'claude',
+      // onChunk: update message content
+      (chunk) => {
+        set((s) => ({
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === agentMsgId ? { ...m, content: m.content + chunk } : m
+          ),
+        }));
+      },
+      // onComplete: mark as done
+      () => {
+        set((s) => ({
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === agentMsgId ? { ...m, pending: false } : m
+          ),
+        }));
+      },
+      // onError: fall back to mock response
+      (error) => {
+        console.warn('[chat] Agent API error, using mock:', error);
+        
+        // Generate mock response
+        let mockContent: string;
+        if (command) {
+          mockContent = command.name === 'status'
+            ? `📊 ${get().tasks.length} tasks total, ${get().tasks.filter(t => t.status === 'done').length} done, ${get().tasks.filter(t => t.status === 'in-review').length} in review.`
+            : `Command \`/${command.name}\` received. Args: ${command.args.join(', ') || '(none)'}.\n\n_(Agent gateway not available — using mock response)_`;
+        } else {
+          mockContent = `I heard: "${content}"\n\n_(Agent gateway not available. Enable \`gateway.http.endpoints.chatCompletions\` in your OpenClaw config to connect.)_`;
+        }
+
+        set((s) => ({
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === agentMsgId ? { ...m, content: mockContent, pending: false } : m
+          ),
+        }));
+      }
+    );
   },
 
   addAgentMessage: (content, agentId, command) => {
