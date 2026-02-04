@@ -65,33 +65,41 @@ const COMMAND_DEFS: CommandDef[] = [
     help: 'Create a new OpenSpec change',
     minArgs: 1,
     maxArgs: Infinity,
-    execute: async (cmd, ctx) => {
+    execute: async (cmd) => {
       const description = cmd.args.join(' ');
       if (!description.trim()) {
         return { success: false, message: '❌ Please provide a description for the new change.' };
       }
       
-      // T13 will implement actual creation
-      if (ctx.onCreateChange) {
-        try {
-          const changeId = await ctx.onCreateChange(
-            description.slice(0, 50).replace(/[^a-z0-9-]/gi, '-').toLowerCase(),
-            description
-          );
-          return {
-            success: true,
-            message: `✅ Created change: **${changeId}**\n\nNext: run \`/plan ${changeId}\` to generate tasks.`,
-            navigateTo: { screen: 'spec-studio', id: changeId },
-          };
-        } catch (e) {
-          return { success: false, message: `❌ Failed to create change: ${e}` };
+      // Generate a name from the description
+      const name = description
+        .slice(0, 50)
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      try {
+        const response = await fetch('/api/changes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return { success: false, message: `❌ ${data.error || 'Failed to create change'}` };
         }
+
+        return {
+          success: true,
+          message: `✅ Created change: **${data.changeId}**\n\n📁 \`openspec/changes/${data.changeId}/proposal.md\`\n\nNext: run \`/plan ${data.changeId}\` to generate tasks.`,
+          navigateTo: { screen: 'spec-studio', id: data.changeId },
+        };
+      } catch (e) {
+        return { success: false, message: `❌ Failed to create change: ${e instanceof Error ? e.message : 'Network error'}` };
       }
-      
-      return {
-        success: true,
-        message: `📝 Would create change: "${description}"\n\n_(Change creation not wired yet — coming in T13)_`,
-      };
     },
   },
   {
