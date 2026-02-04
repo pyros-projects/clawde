@@ -1,5 +1,56 @@
 // ClawDE Core Data Model
-// These types are the MVP bridge — mock now, real adapters later
+// v0: mock adapters | v1: file-based adapters | v2: multi-project
+
+// ============================================================
+// Project Context
+// ============================================================
+
+export interface ProjectContext {
+  root: string;                   // absolute path to repo
+  name: string;                   // from package.json or directory name
+  hasOpenSpec: boolean;            // openspec/ exists
+  hasBeads: boolean;               // .beads/ exists
+  hasGit: boolean;                 // .git/ exists
+  hasClawDEConfig: boolean;        // .clawde/ exists
+  config: ClawDEConfig;
+}
+
+export interface ClawDEConfig {
+  agents: AgentConfig[];
+  settings: ClawDESettings;
+}
+
+export interface AgentConfig {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  color: string;
+  capabilities: string[];
+  connection: AgentConnectionConfig;
+}
+
+export interface AgentConnectionConfig {
+  type: 'openclaw' | 'cli' | 'http';
+  gateway?: string;               // OpenClaw gateway URL
+  command?: string;                // CLI command (e.g., "codex")
+  baseUrl?: string;                // HTTP base URL
+}
+
+export interface ClawDESettings {
+  confirmDestructive: boolean;     // require confirmation for destructive commands
+  maxActionsPerMinute: number;     // rate limit
+  defaultAgent?: string;           // agent ID for chat
+  watchDebounceMs: number;         // file watcher debounce
+  mockMode: boolean;               // use mock data instead of real adapters
+}
+
+export const DEFAULT_SETTINGS: ClawDESettings = {
+  confirmDestructive: true,
+  maxActionsPerMinute: 30,
+  watchDebounceMs: 100,
+  mockMode: false,
+};
 
 // ============================================================
 // Entities
@@ -106,6 +157,7 @@ export interface Change {
 // ============================================================
 
 export interface TaskGraphAdapter {
+  init(projectRoot: string): Promise<void>;
   getTasks(): Promise<Task[]>;
   getTask(id: string): Promise<Task | null>;
   getReadyTasks(): Promise<Task[]>;
@@ -114,6 +166,7 @@ export interface TaskGraphAdapter {
 }
 
 export interface SpecAdapter {
+  init(projectRoot: string): Promise<void>;
   getChanges(): Promise<Change[]>;
   getChange(id: string): Promise<Change | null>;
   getArtifact(changeId: string, type: ArtifactType): Promise<Artifact | null>;
@@ -121,15 +174,51 @@ export interface SpecAdapter {
 }
 
 export interface VCSAdapter {
+  init(projectRoot: string): Promise<void>;
   getDiff(taskId: string): Promise<{ files: DiffFile[] }>;
   getCommits(taskId: string): Promise<CommitInfo[]>;
 }
 
 export interface AgentRuntimeAdapter {
+  init(projectRoot: string, config: ClawDEConfig): Promise<void>;
   getAgents(): Promise<Agent[]>;
   getAgent(id: string): Promise<Agent | null>;
   getEvents(since?: string): Promise<Event[]>;
 }
+
+// ============================================================
+// Chat Types
+// ============================================================
+
+export type ChatRole = 'user' | 'agent' | 'system';
+
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  agentId?: string;
+  timestamp: string;
+  command?: ParsedCommand;         // if this was a parsed command
+  pending?: boolean;               // still streaming
+}
+
+export interface ParsedCommand {
+  name: string;                    // e.g., "new", "plan", "seed"
+  args: string[];                  // positional args
+  flags: Record<string, string>;   // --flag=value
+  raw: string;                     // original input
+}
+
+export const COMMANDS = [
+  { name: 'new', usage: '/new <description>', help: 'Create a new OpenSpec change' },
+  { name: 'plan', usage: '/plan [change-id]', help: 'Run task decomposition on a change' },
+  { name: 'seed', usage: '/seed [change-id]', help: 'Import tasks into Beads graph' },
+  { name: 'assign', usage: '/assign <task> <agent>', help: 'Assign a task to an agent' },
+  { name: 'status', usage: '/status', help: 'Show project status summary' },
+  { name: 'approve', usage: '/approve <task>', help: 'Approve a task in review' },
+  { name: 'reject', usage: '/reject <task> [reason]', help: 'Reject a task with feedback' },
+  { name: 'run', usage: '/run <task>', help: 'Tell an agent to start a task' },
+] as const;
 
 // ============================================================
 // Supporting Types

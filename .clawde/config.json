@@ -1,0 +1,34 @@
+{
+  "agents": [
+    {
+      "id": "claude",
+      "name": "Claude",
+      "provider": "Anthropic",
+      "model": "claude-opus-4-5",
+      "color": "#f97316",
+      "capabilities": ["coding", "architecture", "review", "documentation", "git-write"],
+      "connection": {
+        "type": "openclaw",
+        "gateway": "http://localhost:18789"
+      }
+    },
+    {
+      "id": "codie",
+      "name": "Codie",
+      "provider": "OpenAI",
+      "model": "gpt-5.2",
+      "color": "#06b6d4",
+      "capabilities": ["coding", "review", "testing", "refactoring"],
+      "connection": {
+        "type": "openclaw",
+        "gateway": "http://localhost:19789"
+      }
+    }
+  ],
+  "settings": {
+    "confirmDestructive": true,
+    "maxActionsPerMinute": 30,
+    "watchDebounceMs": 100,
+    "defaultAgent": "claude"
+  }
+}
