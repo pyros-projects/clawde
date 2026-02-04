@@ -44,8 +44,17 @@ interface AppStore {
 }
 
 function tryParseCommand(input: string): ParsedCommand | undefined {
-  if (!input.startsWith('/')) return undefined;
-  const parts = input.slice(1).split(/\s+/);
+  // Accept both "/status" and "clawde status" formats
+  let commandText: string;
+  if (input.startsWith('/')) {
+    commandText = input.slice(1);
+  } else if (input.toLowerCase().startsWith('clawde ')) {
+    commandText = input.slice(7); // "clawde ".length
+  } else {
+    return undefined;
+  }
+  
+  const parts = commandText.split(/\s+/);
   const name = parts[0]?.toLowerCase();
   if (!COMMANDS.find(c => c.name === name)) return undefined;
   const args: string[] = [];
@@ -65,6 +74,7 @@ function tryParseCommand(input: string): ParsedCommand | undefined {
 async function streamAgentResponse(
   message: string,
   agentId: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
   onChunk: (chunk: string) => void,
   onComplete: (fullResponse: string) => void,
   onError: (error: string) => void
@@ -73,7 +83,7 @@ async function streamAgentResponse(
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentId, message }),
+      body: JSON.stringify({ agentId, message, history }),
     });
 
     if (!response.ok) {
@@ -174,10 +184,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
     };
     set((s) => ({ chatMessages: [...s.chatMessages, pendingMsg] }));
 
+    // Build history from last 10 messages (excluding the pending one)
+    const existingMessages = get().chatMessages.filter(m => !m.pending);
+    const history = existingMessages
+      .slice(-10)
+      .map(m => ({
+        role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: m.content,
+      }));
+
     // Try streaming from agent API
     streamAgentResponse(
       content,
       'claude',
+      history,
       // onChunk: update message content
       (chunk) => {
         set((s) => ({
