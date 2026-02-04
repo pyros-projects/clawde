@@ -268,86 +268,89 @@ const COMMAND_DEFS: CommandDef[] = [
   {
     name: 'approve',
     usage: '/approve <task>',
-    help: 'Approve a task in review',
+    help: 'Approve a task (mark as done)',
     minArgs: 1,
     maxArgs: 1,
     execute: async (cmd, ctx) => {
       const taskRef = cmd.args[0];
       
+      // Try to find task in local state (for display info)
       const task = ctx.tasks.find(t => 
         t.id === taskRef || 
         t.id.includes(taskRef) || 
         t.title.toLowerCase().includes(taskRef.toLowerCase())
       );
       
-      if (!task) {
-        return { success: false, message: `❌ Task "${taskRef}" not found.` };
-      }
-      
-      if (task.status !== 'in-review') {
-        return { success: false, message: `❌ Task "${task.title}" is not in review (status: ${task.status}).` };
-      }
-      
-      if (ctx.onUpdateTask) {
-        try {
-          await ctx.onUpdateTask(task.id, { status: 'done' });
-          return {
-            success: true,
-            message: `✅ Approved: **${task.title}**`,
-            navigateTo: { screen: 'task-graph', id: task.id },
-          };
-        } catch (e) {
-          return { success: false, message: `❌ Failed to approve: ${e}` };
+      const taskId = task?.id || taskRef;
+      const displayName = task?.title || taskId;
+
+      // Note: we no longer require in-review status client-side
+      // API/Beads will handle any status transition rules
+
+      try {
+        const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'done' }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return { success: false, message: `❌ ${data.error || 'Failed to approve task'}` };
         }
+
+        return {
+          success: true,
+          message: `✅ Approved: **${displayName}**`,
+          navigateTo: { screen: 'task-graph', id: taskId },
+        };
+      } catch (e) {
+        return { success: false, message: `❌ Failed to approve: ${e instanceof Error ? e.message : 'Network error'}` };
       }
-      
-      return {
-        success: true,
-        message: `✅ Would approve: **${task.title}**\n\n_(Approval not wired yet — coming in T17)_`,
-      };
     },
   },
   {
     name: 'reject',
     usage: '/reject <task> [reason]',
-    help: 'Reject a task with feedback',
+    help: 'Reject a task (send back to in-progress)',
     minArgs: 1,
     maxArgs: Infinity,
     execute: async (cmd, ctx) => {
       const taskRef = cmd.args[0];
       const reason = cmd.args.slice(1).join(' ') || 'No reason provided';
       
+      // Try to find task in local state (for display info)
       const task = ctx.tasks.find(t => 
         t.id === taskRef || 
         t.id.includes(taskRef) || 
         t.title.toLowerCase().includes(taskRef.toLowerCase())
       );
       
-      if (!task) {
-        return { success: false, message: `❌ Task "${taskRef}" not found.` };
-      }
-      
-      if (task.status !== 'in-review') {
-        return { success: false, message: `❌ Task "${task.title}" is not in review (status: ${task.status}).` };
-      }
-      
-      if (ctx.onUpdateTask) {
-        try {
-          await ctx.onUpdateTask(task.id, { status: 'in-progress' });
-          return {
-            success: true,
-            message: `🔄 Rejected: **${task.title}**\nReason: ${reason}`,
-            navigateTo: { screen: 'task-graph', id: task.id },
-          };
-        } catch (e) {
-          return { success: false, message: `❌ Failed to reject: ${e}` };
+      const taskId = task?.id || taskRef;
+      const displayName = task?.title || taskId;
+
+      try {
+        const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'in-progress' }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          return { success: false, message: `❌ ${data.error || 'Failed to reject task'}` };
         }
+
+        return {
+          success: true,
+          message: `🔄 Rejected: **${displayName}**\nReason: ${reason}`,
+          navigateTo: { screen: 'task-graph', id: taskId },
+        };
+      } catch (e) {
+        return { success: false, message: `❌ Failed to reject: ${e instanceof Error ? e.message : 'Network error'}` };
       }
-      
-      return {
-        success: true,
-        message: `🔄 Would reject: **${task.title}**\nReason: ${reason}\n\n_(Rejection not wired yet — coming in T17)_`,
-      };
     },
   },
   {
