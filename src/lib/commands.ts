@@ -37,7 +37,25 @@ const COMMAND_DEFS: CommandDef[] = [
     minArgs: 0,
     maxArgs: 0,
     execute: async (_cmd, ctx) => {
-      const { tasks, changes } = ctx;
+      // Try to fetch fresh data from API, fall back to local state
+      let tasks = ctx.tasks;
+      let changes = ctx.changes;
+      let projectName = 'ClawDE';
+
+      try {
+        const [tasksRes, changesRes, projectRes] = await Promise.all([
+          fetch('/api/tasks').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/changes').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/project').then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+
+        if (tasksRes?.tasks) tasks = tasksRes.tasks;
+        if (changesRes?.changes) changes = changesRes.changes;
+        if (projectRes?.project?.name) projectName = projectRes.project.name;
+      } catch {
+        // Use local state as fallback
+      }
+
       const stats = {
         total: tasks.length,
         done: tasks.filter(t => t.status === 'done').length,
@@ -46,16 +64,43 @@ const COMMAND_DEFS: CommandDef[] = [
         blocked: tasks.filter(t => t.status === 'blocked').length,
         ready: tasks.filter(t => t.status === 'ready' || t.status === 'open').length,
       };
-      const activeChanges = changes.filter(c => c.status === 'active' || c.status === 'implementing');
       
+      const activeChanges = changes.filter(c => c.status === 'active' || c.status === 'implementing');
+      const reviewTasks = tasks.filter(t => t.status === 'in-review');
+      
+      // Calculate completion percentage
+      const completionPct = stats.total > 0 
+        ? Math.round((stats.done / stats.total) * 100) 
+        : 0;
+
+      // Build status message with deep links
+      let message = `📊 **${projectName} Status**\n\n`;
+      message += `**Progress:** ${completionPct}% complete (${stats.done}/${stats.total})\n`;
+      message += `• ✅ ${stats.done} done | 🔄 ${stats.inProgress} in progress | 👀 ${stats.inReview} in review\n`;
+      message += `• 🚫 ${stats.blocked} blocked | 🎯 ${stats.ready} ready\n\n`;
+      
+      if (activeChanges.length > 0) {
+        message += `**Active Changes:** ${activeChanges.length}\n`;
+        activeChanges.slice(0, 3).forEach(c => {
+          message += `• ${c.name}\n`;
+        });
+        if (activeChanges.length > 3) message += `• ...and ${activeChanges.length - 3} more\n`;
+        message += '\n';
+      }
+
+      if (reviewTasks.length > 0) {
+        message += `**Pending Review:** ${reviewTasks.length}\n`;
+        reviewTasks.slice(0, 3).forEach(t => {
+          message += `• ${t.title}\n`;
+        });
+        if (reviewTasks.length > 3) message += `• ...and ${reviewTasks.length - 3} more\n`;
+      }
+
       return {
         success: true,
-        message: `📊 **Project Status**
-• ${stats.total} tasks total
-• ✅ ${stats.done} done | 🔄 ${stats.inProgress} in progress | 👀 ${stats.inReview} in review
-• 🚫 ${stats.blocked} blocked | 🎯 ${stats.ready} ready
-• 📝 ${activeChanges.length} active changes`,
-        data: stats,
+        message,
+        data: { stats, activeChanges: activeChanges.length, pendingReview: reviewTasks.length },
+        navigateTo: { screen: 'mission-control' },
       };
     },
   },
