@@ -1,56 +1,91 @@
-# ClawDE — Claw Development Environment
+# ClawDE — Orchestration-First Development Environment
 
-> **Orchestration-first development environment for AI agent swarms.**
 > Task graphs, spec-driven workflow, review-centric. The IDE paradigm, rethought.
 
-## The Problem
+ClawDE is a **control plane for AI agent swarms** — not another editor, but the dashboard that sits next to your editor. Think Mission Control for your AI team: assign tasks, visualize dependencies, review changes, manage specs.
 
-Current AI-assisted IDEs are "VSCode + a chat window." They bolt AI onto a 40-year-old paradigm: file tree → editor → terminal. This works for single-agent assistance, but breaks down when you have multiple AI agents (different models, different capabilities) working together on complex features.
+## 🖼️ Screenshots
 
-**What's missing:**
-- No way to visualize what multiple agents are doing simultaneously
-- No task dependency awareness — agents don't know what's blocked or ready
-- No spec-driven workflow — agents just code, with no structured planning or verification
-- No review gates — humans write code instead of reviewing agent output
-- No identity/access management for multi-agent setups
+### Mission Control
+Real-time overview of agents, tasks, and activity.
 
-## The Vision
+![Mission Control](docs/screenshots/mission-control.jpg)
 
-ClawDE flips the paradigm: **the task graph is the primary view, not the code editor.**
+### Task Graph
+Interactive dependency DAG — click nodes, see status flow through the graph.
 
+![Task Graph](docs/screenshots/task-graph.jpg)
+
+### Review Queue
+Code review with unified diff viewer, evidence display, and approve/reject flow.
+
+![Review Queue](docs/screenshots/review-queue.jpg)
+
+### Spec Studio
+Spec-driven planning with artifact pipeline visualization (proposal → specs → design → tasks).
+
+![Spec Studio](docs/screenshots/spec-studio.jpg)
+
+### Agent Registry
+Agent capabilities, connection status, and per-agent task stats.
+
+![Agent Registry](docs/screenshots/agent-registry.jpg)
+
+## 🚀 Quick Start
+
+```bash
+git clone https://github.com/pyros-projects/clawde.git
+cd clawde
+npm install
+npm run dev
 ```
-Human declares intent
-  → Specs define what to build
-    → Task graph tracks dependencies
-      → Agents work on ready tasks
-        → Human reviews and approves
-          → Verified and archived
-```
 
-Instead of an editor with AI bolted on, ClawDE is a **mission control dashboard** that sits alongside your terminal where agents run. You see what's happening, what's blocked, what needs review — and you direct the work.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Status
+## 🏗️ Architecture
 
-🚧 **Early prototype** — We're building the spec and interactive prototype first, then growing it into an MVP.
+**Orchestration-first, not editor-first.** The task graph is the primary view, not a code editor.
 
-## Stack
+- **5 screens**: Mission Control, Task Graph, Review Queue, Spec Studio, Agent Registry
+- **Core entities**: Task, Artifact, Evidence, Agent, Event, Change
+- **Adapter interfaces**: TaskGraphAdapter, SpecAdapter, VCSAdapter, AgentRuntimeAdapter
+- **Mock data now, real adapters later** — the store is the adapter boundary
 
-- **Frontend:** React + Next.js (web dashboard)
-- **Workflow:** OpenSpec (spec-driven planning) + Beads (task dependency graph)
-- **License:** MIT
+### Tech Stack
 
-## Philosophy
+- Next.js 16 + TypeScript
+- Tailwind CSS (dark theme)
+- Zustand (state management)
+- React Flow (interactive DAG visualization)
+- lucide-react (icons)
 
-- **Orchestration-first:** The task graph is the center, not the file tree
-- **Spec-driven:** Plan before you code, verify after
-- **Review-centric:** Humans approve, agents execute
-- **Model-agnostic:** Works with any AI provider
-- **Git-aware:** Identity management, serialized writes, conflict prevention
+## 📋 Status
 
-## Contributing
+**v0 Prototype** — all 5 screens functional with mock data. Built by Claude and Codie in a single session.
 
-This project is in early development. Watch or star to follow progress.
+### What's Here (v0)
+- ✅ Mission Control — agent cards, activity feed, progress stats
+- ✅ Task Graph — interactive DAG with status colors, assignee badges
+- ✅ Review Queue — diff viewer with syntax highlighting, approve/reject
+- ✅ Spec Studio — change list, artifact pipeline visualization
+- ✅ Agent Registry — capabilities, connection status, task stats
+- ✅ Keyboard navigation (1-5 for screens)
+- ✅ Collapsible sidebar
 
-## License
+### What's Next (MVP)
+- 🔜 Real adapter implementations (OpenClaw, Beads, Git)
+- 🔜 WebSocket event streaming
+- 🔜 Interactive spec editing ("Generate Tasks" from specs)
+- 🔜 Access controls and cost tracking
+- 🔜 Vercel deployment
+
+## 🤝 Built By
+
+- **Claude** (Anthropic, claude-opus-4-5) — architecture, implementation, git operations
+- **Codie** (OpenAI, GPT-5.2) — code review, testing, quality assurance
+
+Two AI agents collaborating through [OpenClaw](https://github.com/openclaw/openclaw), orchestrated by a human named Pyro.
+
+## 📄 License
 
 MIT
