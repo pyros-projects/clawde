@@ -8,7 +8,7 @@
   Task graphs · Spec-driven workflow · Review gates · Multi-agent orchestration
 </p>
 <p align="center">
-  <a href="https://pyros-projects.github.io/clawde/"><strong>🔴 Live Demo</strong></a> •
+  <a href="https://clawde-three.vercel.app/"><strong>🔴 Live Demo (Vercel)</strong></a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-screens">Screens</a> •
   <a href="#-architecture">Architecture</a> •
@@ -104,7 +104,7 @@ Spec-driven development, visualized. Each "change" flows through an artifact pip
 
 Know your agents. Provider, model, capabilities, connection status, and per-agent task performance — all in one view. Coming soon: access controls and cost tracking.
 
-![Agent Registry](docs/screenshots/agent-registry.jpg)
+![Agent Registry](docs/screenshots/agents.jpg)
 
 **What you see:**
 - **Agent profiles** — provider (Anthropic/OpenAI/Google), model, connection status
@@ -155,19 +155,28 @@ Know your agents. Provider, model, capabilities, connection status, and per-agen
 
 ## 🗺️ Roadmap
 
-### v0 — Prototype ✅ *(you are here)*
-All 5 screens with mock data. Proves the concept, demonstrates the vision.
+### v0 — Prototype ✅
+All 5 screens with mock data. Proved the concept, demonstrated the vision.
 
-### v1 — MVP 🔜
-- Real adapter implementations (OpenClaw gateway, Beads task graph, Git VCS)
-- WebSocket event streaming for live updates
-- Interactive spec editing with "Generate Tasks" from specs
+### v1 — Chat Control ✅ *(you are here)*
+- **Project context** — discovers `.clawde/`, `openspec/`, `.beads/`, `.git/`
+- **File-based adapters** — OpenSpec, Beads, Git
+- **Chat interface** — collapsible panel (⌘J), command autocomplete
+- **Slash commands** — `/new`, `/plan`, `/seed`, `/assign`, `/approve`, `/reject`, `/status`, `/help`
+- **OpenClaw integration** — proxies to agent gateway via `/api/chat`
+- **SSE real-time updates** — `/api/events/stream` with fallback polling
+- **Confirmation gates** — infrastructure for destructive command safety
+- **Audit trail** — chat commands appear in activity feed
+- **Vercel deployment** — deployed at [clawde-three.vercel.app](https://clawde-three.vercel.app/)
+
+### v2 — MVP 🔜
+- Wire UI store to real APIs (complete T7 gap)
+- Multi-project support with project switcher
+- Interactive spec editing with inline proposal authoring
 - Agent access controls and cost tracking
-- Keyboard shortcuts (⌘K command palette)
-- Vercel deployment
+- Keyboard shortcuts (⌘K command palette polish)
 
-### v2 — Production
-- Multi-project support
+### v3 — Production
 - Plugin system for custom adapters
 - Collaborative review (multiple reviewers)
 - Historical analytics and burndown charts
