@@ -8,6 +8,11 @@ export type CommandResult = {
   message: string;
   data?: unknown;
   navigateTo?: { screen: string; id?: string }; // hint for UI navigation
+  needsConfirmation?: {
+    action: string;
+    description: string;
+    confirmToken: string; // unique token for this pending action
+  };
 };
 
 export type CommandContext = {
@@ -26,7 +31,78 @@ interface CommandDef {
   help: string;
   minArgs: number;
   maxArgs: number;
+  destructive?: boolean; // requires confirmation when settings.confirmDestructive is true
   execute: (cmd: ParsedCommand, ctx: CommandContext) => Promise<CommandResult>;
+}
+
+// Pending confirmation state (module-level for simplicity)
+let pendingConfirmation: {
+  token: string;
+  action: string;
+  execute: () => Promise<CommandResult>;
+  expiresAt: number;
+} | null = null;
+
+/**
+ * Check if there's a pending confirmation and handle confirm/cancel
+ */
+export function handleConfirmation(action: 'confirm' | 'cancel'): CommandResult | null {
+  if (!pendingConfirmation) {
+    return {
+      success: false,
+      message: '❌ No pending action to ' + action + '.',
+    };
+  }
+
+  if (Date.now() > pendingConfirmation.expiresAt) {
+    pendingConfirmation = null;
+    return {
+      success: false,
+      message: '⏰ Confirmation expired. Please run the command again.',
+    };
+  }
+
+  if (action === 'cancel') {
+    const actionName = pendingConfirmation.action;
+    pendingConfirmation = null;
+    return {
+      success: true,
+      message: `🚫 Cancelled: ${actionName}`,
+    };
+  }
+
+  // For 'confirm', return null to signal caller should use getPendingExecution()
+  return null;
+}
+
+/**
+ * Get the pending confirmation's execute function
+ */
+export function getPendingExecution(): (() => Promise<CommandResult>) | null {
+  if (!pendingConfirmation || Date.now() > pendingConfirmation.expiresAt) {
+    return null;
+  }
+  const exec = pendingConfirmation.execute;
+  pendingConfirmation = null;
+  return exec;
+}
+
+/**
+ * Set a pending confirmation
+ */
+export function setPendingConfirmation(
+  action: string,
+  execute: () => Promise<CommandResult>,
+  ttlMs = 60000 // 1 minute default
+): string {
+  const token = Math.random().toString(36).slice(2, 10);
+  pendingConfirmation = {
+    token,
+    action,
+    execute,
+    expiresAt: Date.now() + ttlMs,
+  };
+  return token;
 }
 
 const COMMAND_DEFS: CommandDef[] = [
@@ -452,6 +528,34 @@ const COMMAND_DEFS: CommandDef[] = [
         success: true,
         message: `**Available Commands**\n\n${helpText}\n\n_Tip: Also accepts \`clawde <command>\` format._`,
       };
+    },
+  },
+  {
+    name: 'confirm',
+    usage: '/confirm',
+    help: 'Confirm a pending destructive action',
+    minArgs: 0,
+    maxArgs: 0,
+    execute: async () => {
+      const exec = getPendingExecution();
+      if (!exec) {
+        return {
+          success: false,
+          message: '❌ No pending action to confirm.',
+        };
+      }
+      return exec();
+    },
+  },
+  {
+    name: 'cancel',
+    usage: '/cancel',
+    help: 'Cancel a pending destructive action',
+    minArgs: 0,
+    maxArgs: 0,
+    execute: async () => {
+      const result = handleConfirmation('cancel');
+      return result || { success: false, message: '❌ No pending action to cancel.' };
     },
   },
 ];
