@@ -6,8 +6,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
   type Node,
   type Edge,
   type NodeTypes,
@@ -99,12 +97,10 @@ function layoutNodes(tasks: Task[]): { nodes: Node[]; edges: Edge[] } {
 }
 
 export function TaskGraphScreen() {
-  const { tasks, selectTask, selectedTaskId } = useAppStore();
+  const { tasks, selectTask } = useAppStore();
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => layoutNodes(tasks), [tasks]);
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const { nodes, edges } = useMemo(() => layoutNodes(tasks), [tasks]);
 
   const onSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: selectedNodes }) => {
@@ -166,8 +162,6 @@ export function TaskGraphScreen() {
           <ReactFlow
             nodes={nodes}
             edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
             onSelectionChange={onSelectionChange}
             nodeTypes={nodeTypes}
             fitView

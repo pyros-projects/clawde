@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { StatusDot } from '@/components/ui/status-dot';
 import { DiffViewer } from './diff-viewer';
-import { CheckCircle2, XCircle, Eye, GitCommit, Clock, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, Eye, GitCommit, Clock } from 'lucide-react';
 
 export function ReviewQueueScreen() {
   const { tasks, agents, approveTask, rejectTask } = useAppStore();
