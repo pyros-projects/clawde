@@ -1,5 +1,7 @@
 <p align="center">
   <img src="docs/demo.gif" alt="ClawDE Demo" width="720" />
+  <br>
+  <sub><a href="docs/demo/clawde-demo.mp4">📹 MP4 mirror</a> (1.7MB, faster load)</sub>
 </p>
 
 <h1 align="center">ClawDE</h1>
